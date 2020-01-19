@@ -15,10 +15,11 @@ class Character {
     this.discarded = deck;
     this.block = 0;
     this.poison = 0;
+    this.strength = 0;
     this.drawHand();
   }
   static display (character) {
-    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡":""} ${character.poison?character.poison+"☣️":""} ${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
+    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡":""} ${character.strength?character.strength+"💪":""} ${character.poison?character.poison+"☣️":""} ${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
   }
   async act(){}
   upkeep(){
@@ -43,8 +44,10 @@ class Character {
     }
   }
   gainStatus(status, amount){ // can be buffs or nerfs
-    if (status === "block") this.block += amount
-    if (status === "poison") this.poison += amount
+    if (status === "block") this.block += amount;
+    else if (status === "poison") this.poison += amount;
+    else if (status === "strength") this.strength += amount;
+    else throw new Error(`Unknown status: ${status}`);
   }
   die(){
     console.log(this.name, "died!");
@@ -84,7 +87,7 @@ class Hero extends Character {
     this.upkeep();
     while (this.energy && this.hp > 0) {
       console.log("Hand:");
-      this.hand.forEach(Card.display);
+      this.hand.forEach((card) => Card.display(card, this));
       console.log("Heroes:");
       this.room.heroes.forEach(Character.display.bind(this)); // show hero energy
       console.log("Monsters:");
@@ -150,9 +153,9 @@ class Zombie extends Monster {
       name: "Zombie",
       icon: "🧟‍♂️ ",
       hp: randInRange(7, 15),
-      energy: 1,
-      hand: 1,
-      deck: [new Shield(), new Strike()]
+      energy: 2,
+      hand: 2,
+      deck: [new Shield(), new Strike(), new Flex()]
     });
   }
 };
@@ -170,8 +173,8 @@ class Cultist extends Monster {
 };
 
 class Card {
-  static display (card) {
-    console.log(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.text}`);
+  static display (card, caster) {
+    console.log(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.makeText(caster)}`);
   }
   static shuffle (cards) {
     let remaining = cards.length+1;
@@ -195,10 +198,22 @@ class Strike extends Attack {
     this.name = "Strike";
     this.icon = "⚔️ "
     this.cost = 1;
-    this.text = "Deal 6 damage.";
+    this.makeText = (caster) => `Deal ${6 + caster.strength} damage.`;
   }
   effect(caster, target) {
-    target.takeDamage(6);
+    target.takeDamage(6 + caster.strength);
+  }
+};
+class Flex extends Skill {
+  constructor () {
+    super();
+    this.name = "Flex";
+    this.icon = "💪 "
+    this.cost = 1;
+    this.makeText = (caster) => "Gain 1 permanent strength.";
+  }
+  effect(caster, target) {
+    target.gainStatus("strength", 1);
   }
 };
 class Poison extends Attack {
@@ -207,7 +222,7 @@ class Poison extends Attack {
     this.name = "Poison";
     this.icon = "☣️ "
     this.cost = 1;
-    this.text = "Apply 5 poison.";
+    this.makeText = (caster) => "Apply 5 poison.";
   }
   effect(caster, target) {
     target.gainStatus("poison", 5);
@@ -219,7 +234,7 @@ class Shield extends Skill {
     this.name = "Shield";
     this.icon = "🛡 ";
     this.cost = 1;
-    this.text = "Gain 5 block.";
+    this.makeText = (caster) => "Gain 5 block.";
   }
   effect(caster, target) {
     caster.gainStatus("block", 5);
@@ -231,7 +246,7 @@ class Bandage extends Skill {
     this.name = "First Aid";
     this.icon = "💉"
     this.cost = 2;
-    this.text = "Heal 2 hp.";
+    this.makeText = (caster) => "Heal 2 hp.";
   }
   effect(caster, target) {
     caster.takeDamage(-2);
@@ -243,10 +258,10 @@ class Bandage extends Skill {
     heroes: [new Hero({
       name: "Hero",
       icon: "🦸‍♂️ ",
-      hp: randInRange(35, 35),
+      hp: randInRange(45, 45),
       energy: 3,
       hand: 3,
-      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage(), new Poison()]
+      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage(), new Poison(), new Flex()]
     })],
     monsters: [new Sneko(), new Zombie(), new Cultist()]
   };
