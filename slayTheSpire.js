@@ -14,16 +14,21 @@ class Character {
     this.hand = [];
     this.discarded = deck;
     this.block = 0;
+    this.poison = 0;
     this.drawHand();
   }
   static display (character) {
-    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡":""} ${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].icon :""}`);
+    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡":""} ${character.poison?character.poison+"☣️":""} ${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
   }
-  async act(combatants){}
+  async act(){}
   upkeep(){
-    this.energy = this.maxEnergy;
     this.block = 0;
-    // this.drawHand();
+    if (this.poison > 0){   //poison effects
+      console.log(`${this.name} took ${this.poison} damage from poison.`);
+      this.takeDamage(this.poison);
+      this.poison -= 1;
+    }
+    this.energy = this.maxEnergy;
   }
   takeDamage(damage){
     if (damage < 0) return this.hp -= damage; // can be negative to heal
@@ -39,6 +44,7 @@ class Character {
   }
   gainStatus(status, amount){ // can be buffs or nerfs
     if (status === "block") this.block += amount
+    if (status === "poison") this.poison += amount
   }
   die(){
     console.log(this.name, "died!");
@@ -76,7 +82,7 @@ class Character {
 class Hero extends Character {
   async act(){
     this.upkeep();
-    while (this.energy) {
+    while (this.energy && this.hp > 0) {
       console.log("Hand:");
       this.hand.forEach(Card.display);
       console.log("Heroes:");
@@ -110,14 +116,9 @@ class Hero extends Character {
 class Monster extends Character {  // can only play one card per turn despite AP.
   async act(){
     this.upkeep();
-    while (this.energy) {
+    while (this.energy && this.hp > 0) {
       const card = this.hand.filter(card => card.cost <= this.energy)[0];
       if (!card) break; // maybe can't play any cards.
-      // if (card.cost > this.energy) { // too expensive to play it.
-      //   if (this.hand.every(card => card.cost.))
-      //   Card.shuffle(this.hand);
-      //   continue; // try again w a different 1st card.
-      // }
       this.energy -= card.cost;
       if (card instanceof Attack) {
         const randomEnemy = this.room.heroes[randInRange(0, this.room.heroes.length)];
@@ -139,7 +140,7 @@ class Sneko extends Monster {
       hp: randInRange(7, 15),
       energy: 1,
       hand: 1,
-      deck: [new Strike(), new Strike()]
+      deck: [new Strike(), new Poison()]
     });
   }
 };
@@ -149,9 +150,9 @@ class Zombie extends Monster {
       name: "Zombie",
       icon: "🧟‍♂️ ",
       hp: randInRange(7, 15),
-      energy: 2,
+      energy: 1,
       hand: 1,
-      deck: [new Bandage(), new Strike()]
+      deck: [new Shield(), new Strike()]
     });
   }
 };
@@ -161,16 +162,16 @@ class Cultist extends Monster {
       name: "Cultist",
       icon: "🧙‍♂️ ",
       hp: randInRange(7, 15),
-      energy: 1,
-      hand: 1,
-      deck: [new Shield(), new Strike()]
+      energy: 2,
+      hand: 2,
+      deck: [new Bandage(), new Strike()]
     });
   }
 };
 
 class Card {
   static display (card) {
-    console.log(`  ${card.icon}  ${card.cost}⚡️ ${card.name}: ${card.text}`);
+    console.log(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.text}`);
   }
   static shuffle (cards) {
     let remaining = cards.length+1;
@@ -200,6 +201,18 @@ class Strike extends Attack {
     target.takeDamage(6);
   }
 };
+class Poison extends Attack {
+  constructor () {
+    super();
+    this.name = "Poison";
+    this.icon = "☣️ "
+    this.cost = 1;
+    this.text = "Apply 5 poison.";
+  }
+  effect(caster, target) {
+    target.gainStatus("poison", 5);
+  }
+};
 class Shield extends Skill {
   constructor () {
     super();
@@ -225,7 +238,7 @@ class Bandage extends Skill {
   }
 };
 
-(async function runGame (userInterface) {
+(async function runGame () {
   const room = {
     heroes: [new Hero({
       name: "Hero",
@@ -233,7 +246,7 @@ class Bandage extends Skill {
       hp: randInRange(35, 35),
       energy: 3,
       hand: 3,
-      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage()]
+      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage(), new Poison()]
     })],
     monsters: [new Sneko(), new Zombie(), new Cultist()]
   };
