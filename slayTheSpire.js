@@ -208,7 +208,7 @@ class Flex extends Skill {
   constructor () {
     super();
     this.name = "Flex";
-    this.icon = "💪 "
+    this.icon = "💪"
     this.cost = 1;
     this.makeText = (caster) => "Gain 1 permanent strength.";
   }
