@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Slay the Spire</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style media="screen">
+      /* flex layout taken from https://css-tricks.com/snippets/css/a-guide-to-flexbox/ */
+      .wrapper {
+        margin-left: auto;
+        margin-right: auto;
+        width: 940px;
+        display: flex;
+        flex-flow: row wrap; /* We tell all items to be 100% width, via flex-basis */
+        text-align: center;
+        background-image: url("https://i.pinimg.com/originals/fd/56/2a/fd562aa60d983ae0968efc7dd1de33fa.jpg");
+        background-size: cover;
+        background-position: bottom;
+      }
+      .wrapper > * {
+        padding: 10px;
+        flex: 1 100%;
+      }
+      .header {
+        background: tomato;
+      }
+      .left {
+        /* background: gold; opacity: 0.5; */
+        flex: auto; /* was 1 0 0 */
+        justify-content: flex-start;
+        padding-top: 200px; /* so it's high enough */
+      }
+      .main {
+        /* background: deepskyblue; opacity: 0.5; */
+        flex: auto;
+        padding-top: 200px; /* so it's high enough */
+      }
+      .right {
+        /* background: hotpink; opacity: 0.5; */
+        flex: auto; /* was 1 0 0 */
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 200px; /* so it's high enough */
+      }
+      .character {
+        position: relative;
+        width: 200px;
+      }
+      .character>img {
+        height: 200px;
+      }
+      .monster>img {
+        /* transform: scaleX(-1); /* flips H */ */
+      }
+
+      .footer {
+        /* background: lightgreen; opacity: 0.5; */
+        display: flex;
+        justify-content: space-between;
+      }
+      .deck {
+        /* background: darkgreen; opacity: 0.5; */
+        width: 100px;
+      }
+      .deck img { /* for cropping; deprecated, inflexible */
+        position: absolute;
+        clip: rect(960px,140px,1060px,30px);
+        bottom: 15px;
+        left: 0px;
+      }
+      .hand {
+        /* background: green; opacity: 0.5; */
+        display: flex;
+      }
+      .discarded {
+        /* background: darkgreen; opacity: 0.5; */
+        width: 100px;
+      }
+      .discarded img { /* for cropping; deprecated, inflexible */
+        position: absolute;
+        clip: rect(960px,1890px,1060px,1770px);
+        bottom: 15px;
+        right: 0;
+      }
+      .card>img {
+        cursor: grab;
+        user-select: none; /* prevent dragging ghost image */
+        width: 100px;
+      }
+      img.arrow {
+        position: absolute;
+        bottom: -8%;
+        transform: scaleY(-0.5) scaleX(-0.5);
+        left: 33%;
+      }
+
+      /* breathing animation for characters */
+      .character {
+        animation: breathing 2s ease-in infinite;
+      }
+      @keyframes breathing {
+        0% { transform: scaleY(1) translateY(0); ; }
+        50% { transform: scaleY(1.05) translateY(-5px); }
+        100% { transform: scaleY(1) translateY(0); ; }
+      }
+
+      /* make cards hand fan out: https://stackoverflow.com/a/53816039 */
+      .hand{
+        display:flex;
+        position:relative;
+        justify-content: center;
+      }
+      .card {
+        position: relative;
+        transition: transform .2s;
+      }
+      .card:nth-child(1) {
+        transform: translateY(0px) rotate(-15deg);
+        left: 20px;
+        top: 5px;
+      }
+      .card:nth-child(2) {
+        transform: translateY(0px) rotate(0deg);
+        left: 0px;
+        top: 0px;
+      }
+      .card:nth-child(3) {
+        transform: translateY(0px) rotate(15deg);
+        left: -20px;
+        top: 5px;
+      }
+      .card:hover{
+        z-index:2;
+        transform: translate(0px, -40px) rotate(0deg) scale(1.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="header"></div>
+      <div class="left">
+        <div class="character hero" id="hero1">
+          <img ondrop="drop(event)" ondragover="allowDrop(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717" />
+        </div>
+      </div>
+      <div class="main"></div>
+      <div class="right">
+        <div class="character monster" id="monster1">
+          <img ondrop="drop(event)" ondragover="allowDrop(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/a/ac/Silent.png/revision/latest?cb=20181020084403" />
+        </div>
+        <div class="character monster" id="monster2">
+          <img ondrop="drop(event)" ondragover="allowDrop(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/2/27/Defect.png/revision/latest?cb=20181020084409" />
+        </div>
+      </div>
+      <div class="footer">
+        <div class="deck">
+          <img src="https://steamcdn-a.akamaihd.net/steam/apps/646570/ss_01aa3e7759e457bfbf2422f31c325d7b3ba8a6eb.1920x1080.jpg?t=1576536521">
+        </div>
+        <div class="hand">
+          <div class="card" id="strike1"><img draggable="true" ondragstart="drag(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045" /></div>
+          <div class="card" id="defend1"><img draggable="true" ondragstart="drag(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/7/7d/Defend_R.png/revision/latest?cb=20181016205732" /></div>
+          <div class="card" id="strike2"><img draggable="true" ondragstart="drag(event)" src="https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045" /></div>
+        </div>
+        <button onclick=endTurn()>End Turn</button>
+        <div class="discarded">
+          <img src="https://steamcdn-a.akamaihd.net/steam/apps/646570/ss_01aa3e7759e457bfbf2422f31c325d7b3ba8a6eb.1920x1080.jpg?t=1576536521">
+        </div>
+      </div>
+      <!-- <img class="arrow" src="http://pluspng.com/img-png/png-red-arrow-png-small-medium-large-600.png" /> -->
+    </div>
+    <script type="text/javascript" src="./slayTheSpire.js"></script>
+    <script type="text/javascript">
+      window.getUserInputResolve;
+      new Game({
+        quit(){
+          window.alert("Reload page to restart game!");
+        },
+        message(message) {
+          Toastify({
+            text: message,
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+            duration: 3000,
+            // destination: "https://github.com/apvarun/toastify-js",
+            // newWindow: true,
+            // close: true,
+            // gravity: "top", // `top` or `bottom`
+            // position: 'left', // `left`, `center` or `right`
+            // stopOnFocus: true, // Prevents dismissing of toast on hover
+            // onClick: function(){} // Callback after click
+          }).showToast();
+          // window.alert("[Message] " + message);
+        },
+        async getUserInput() {
+          return new Promise((resolve) => window.getUserInputResolve = resolve);
+        },
+        async render(room=this.room){
+          // TODO display health, energy, statuses, stategy
+          console.log("[Render]", room);
+          document.querySelector(".left").innerHTML = room.heroes.reduce((html, hero) => (
+            html + `<div class="character hero" id="${hero.name}">
+              <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${hero.imageUrl}" />
+            </div>`
+          ), "");
+          document.querySelector(".right").innerHTML = room.monsters.reduce((html, monster) => (
+            html + `<div class="character monster" id="${monster.name}">
+              <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${monster.imageUrl}" />
+            </div>`
+          ), "");
+          document.querySelector(".hand").innerHTML = room.heroes[0].hand.reduce((html, card) => (
+            html + `<div class="card" id="${card.name}"><img draggable="true" ondragstart="drag(event)" src="${card.imageUrl}" /></div>`
+          ), "");
+        }
+      });
+
+      function endTurn() {
+        window.getUserInputResolve("end");
+      }
+      function drag(ev) {
+        ev.dataTransfer.setData("cardId", ev.target.parentNode.id);
+      };
+      function allowDrop(ev) {
+        ev.preventDefault();
+      };
+      function drop(ev) {
+        ev.preventDefault();
+        const cardName = ev.dataTransfer.getData("cardId");
+        const targetName = ev.target.parentNode.id;
+        // window.alert(source + " " + target);
+        (window.getUserInputResolve || noop)(cardName + " " + targetName);
+      };
+      function noop () { /* no-op */ }
+    </script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+</html>
+
+<!-- ASSETS -->
+<!-- Heroes: -->
+  <!-- Ironclad https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717 -->
+  <!-- Silent https://vignette.wikia.nocookie.net/slay-the-spire/images/a/ac/Silent.png/revision/latest?cb=20181020084403 -->
+  <!-- Defect https://vignette.wikia.nocookie.net/slay-the-spire/images/2/27/Defect.png/revision/latest?cb=20181020084409 -->
+<!-- Cards: -->
+  <!-- https://slay-the-spire.fandom.com/wiki/{Ironclad,Silent,Defect,Colorless}_Cards -->
+  <!-- ;[...document.querySelectorAll("tr")].slice(1).map(tr => ({name: tr.children[0].innerText, img: tr.querySelector("figure>a").href, rarity: tr.children[2].innerText, type: tr.children[3].innerText, energy: tr.children[4].innerText, description: tr.children[5].innerText})); -->
+<!-- Monsters: -->
+  <!-- Monsters: https://docs.google.com/spreadsheets/d/1ZsxNXebbELpcCi8N7FVOTNGdX_K9-BRC_LMgx4TORo4/edit#gid=1989923881 -->
+  <!-- Bosses: https://docs.google.com/spreadsheets/d/1ZsxNXebbELpcCi8N7FVOTNGdX_K9-BRC_LMgx4TORo4/edit#gid=2055514124 -->
+<!-- Potions: https://cdn.mos.cms.futurecdn.net/du3FKqdthHseNbcr8jjNVJ-320-80.png -->
+<!-- Relics: -->
+  <!-- https://slay-the-spire.fandom.com/wiki/Relics -->
+  <!-- ;[...document.querySelectorAll("tr")].slice(1).map(tr => ({name: tr.children[1].innerText, rarity: tr.children[2].innerText, description: tr.children[3].innerText, img: (tr.children[0].querySelector("img") || {}).src, })); -->
+<!-- Events (rooms): -->
+  <!-- https://docs.google.com/spreadsheets/d/1ZsxNXebbELpcCi8N7FVOTNGdX_K9-BRC_LMgx4TORo4/edit#gid=1047380459 -->
+  <!-- https://slay-the-spire.fandom.com/wiki/Events -->
+<!-- Map Icons: https://slay-the-spire.fandom.com/wiki/Map_locations -->
