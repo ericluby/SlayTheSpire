@@ -142,6 +142,7 @@ class Hero extends Character {
       } catch (error) {
         game.message("Invalid input. Try again. " + error);
       }
+      if (this.room.monsters.length === 0) break; // already won!
     }
     game.message(this.name + " ends its turn.");
     this.discardHand();
@@ -156,6 +157,7 @@ class Monster extends Character {  // can only play one card per turn despite AP
       this.energy -= card.cost;
       if (card instanceof Attack) {
         const randomEnemy = this.room.heroes[randInRange(0, this.room.heroes.length)];
+        if (!randomEnemy) break; // already won!
         card.play(this, randomEnemy);
       } else { // instanceof Skill
         card.play(this, this);
