@@ -1,10 +1,46 @@
-const readline = require('readline') // lets user interact via console.
-const userInterface = readline.createInterface({input: process.stdin});
+class Game {
+  constructor({quit, message, getUserInput, render}){
+    this.quit = quit.bind(this);
+    this.message = message.bind(this);
+    this.getUserInput = getUserInput.bind(this);
+    this.render = render.bind(this);
+    this.activeIndex = 0;
+    this.room = {
+      heroes: [new Hero({
+        name: "Ironclad",
+        icon: "🦸‍♂️ ",
+        hp: randInRange(45, 45),
+        energy: 3,
+        hand: 3,
+        deck: [new Strike(), new Strike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
+        imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
+      })],
+      monsters: [new Snecko(), new JawWorm(), new Cultist()]
+    };
+    this.run();
+  }
+  quit(){ /* implemented by constructor */ }
+  message(stringOrError){ /* implemented by constructor */ }
+  async getUserInput(){ /* implemented by constructor */ }
+  async render(room=this.room){ /* implemented by constructor */ }
+  async run(){
+    [...this.room.heroes, ...this.room.monsters].forEach(c => c.room = this.room);
+    while (this.room.heroes.length > 0 && this.room.monsters.length > 0) {
+      const activeCharacter = [...this.room.heroes, ...this.room.monsters][this.activeIndex];
+      await activeCharacter.act(this);
+      this.activeIndex = (this.activeIndex + 1) % (this.room.heroes.length + this.room.monsters.length); // wrap around thru 0.
+    }
+    await this.render();
+    this.message(this.room.heroes.length > 0 ? "Room cleared; you won!" : new Error("You died; game over!"));
+    this.quit();
+  }
+}
 
 class Character {
-  constructor({name, icon, hp, energy, hand, deck}){
+  constructor({name, icon, hp, energy, hand, deck, imageUrl}){
     this.name = name;
     this.icon = icon;
+    this.imageUrl = imageUrl;
     this.maxHp = hp;
     this.hp = hp;
     this.maxEnergy = energy
@@ -18,14 +54,11 @@ class Character {
     this.strength = 0;
     this.drawHand();
   }
-  static display (character) {
-    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡":""} ${character.strength?character.strength+"💪":""} ${character.poison?character.poison+"☣️":""} ${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
-  }
-  async act(){}
-  upkeep(){
+  async act({message, getUserInput, render}){ /* implemented by subclasses */ }
+  upkeep(game){
     this.block = 0;
     if (this.poison > 0){   //poison effects
-      console.log(`${this.name} took ${this.poison} damage from poison.`);
+      game.message(`${this.name} took ${this.poison} damage from poison.`);
       this.takeDamage(this.poison);
       this.poison -= 1;
     }
@@ -50,7 +83,7 @@ class Character {
     else throw new Error(`Unknown status: ${status}`);
   }
   die(){
-    console.log(this.name, "died!");
+    console.log(this.name + " died!");
     if (this instanceof Hero) {
       const indexInHeroes = this.room.heroes.indexOf(this);
       this.room.heroes.splice(indexInHeroes, 1); // remove 1 item from list.
@@ -83,17 +116,11 @@ class Character {
   }
 };
 class Hero extends Character {
-  async act(){
-    this.upkeep();
+  async act(game){
+    this.upkeep(game);
     while (this.energy && this.hp > 0) {
-      console.log("Hand:");
-      this.hand.forEach((card) => Card.display(card, this));
-      console.log("Heroes:");
-      this.room.heroes.forEach(Character.display.bind(this)); // show hero energy
-      console.log("Monsters:");
-      this.room.monsters.forEach(Character.display);
-      console.log("Enter a card to play and a target.");
-      const answer = await prompt("ex: shield self, strike zombie, end.");
+      await game.render();
+      const answer = await game.getUserInput();
       if (answer === "🔚" || answer.toLowerCase() === "end") break;
       try {
         const card = this.hand.filter(x => answer.includes(x.icon.trim()))[0]
@@ -104,58 +131,62 @@ class Hero extends Character {
           || [...this.room.heroes, ...this.room.monsters].filter(x => answer.toLowerCase().includes(x.name.toLowerCase()))[0];
         if (card.cost <= this.energy) {
           console.clear();
-          card.play(this, target);
+          card.play(this, target, game);
           this.discard(card);
           this.energy -= card.cost;
-        } else console.log("Not enough energy.");
+        } else game.message(new Error("Not enough energy."));
       } catch (error) {
-        console.log("Invalid input. Try again", error);
+        game.message(new Error("Invalid input. Try again. " + error));
       }
+      if (this.room.monsters.length === 0) break; // already won!
     }
-    console.log(this.name, "ends its turn.");
+    game.message(this.name + " ends its turn.");
     this.discardHand();
   }
 };
 class Monster extends Character {  // can only play one card per turn despite AP.
-  async act(){
-    this.upkeep();
+  async act(game){
+    this.upkeep(game);
     while (this.energy && this.hp > 0) {
       const card = this.hand.filter(card => card.cost <= this.energy)[0];
       if (!card) break; // maybe can't play any cards.
       this.energy -= card.cost;
       if (card instanceof Attack) {
         const randomEnemy = this.room.heroes[randInRange(0, this.room.heroes.length)];
-        card.play(this, randomEnemy);
+        if (!randomEnemy) break; // already won!
+        card.play(this, randomEnemy, game);
       } else { // instanceof Skill
-        card.play(this, this);
+        card.play(this, this, game);
       }
     }
-    console.log(this.name, "ends its turn.");
+    game.message(this.name + " ends its turn.");
     this.discardHand();
   }
 };
 // Monsters
-class Sneko extends Monster {
+class Snecko extends Monster {
   constructor () {
     super({
-      name: "Sneko",
+      name: "Snecko",
       icon: "🐍 ",
       hp: randInRange(7, 15),
       energy: 1,
       hand: 1,
-      deck: [new Strike(), new Poison()]
+      deck: [new Defend(), new DeadlyPoison()],
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/44/Snecko.png/revision/latest?cb=20180916025017",
     });
   }
 };
-class Zombie extends Monster {
+class JawWorm extends Monster {
   constructor(){
     super({
-      name: "Zombie",
-      icon: "🧟‍♂️ ",
+      name: "Jaw Worm",
+      icon: "🐗 ",
       hp: randInRange(7, 15),
       energy: 2,
       hand: 2,
-      deck: [new Shield(), new Strike(), new Flex()]
+      deck: [new Strike(), new Flex()],
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/d/d5/Jaw-worm-pretty.png/revision/latest?cb=20180110063613",
     });
   }
 };
@@ -167,126 +198,137 @@ class Cultist extends Monster {
       hp: randInRange(7, 15),
       energy: 2,
       hand: 2,
-      deck: [new Bandage(), new Strike()]
+      deck: [new BandageUp(), new Strike()],
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/c/c6/Cultist-pretty.png/revision/latest?cb=20180106102518",
     });
   }
 };
 
 class Card {
-  static display (card, caster) {
-    console.log(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.makeText(caster)}`);
-  }
   static shuffle (cards) {
     let remaining = cards.length+1;
     while(remaining--)cards.push(cards.splice(randInRange(0,remaining),1)[0]);
   }
-  play(caster, target){
-    this.announce(caster, target);
+  play(caster, target, game){
+    this.announce(caster, target, game);
     this.effect(caster, target);
   }
   effect(caster, target){} // actually does the effect, like takeDamage or gainStatus.
-  announce(caster, target){
-    console.log(`${caster.name} used ${this.name} on ${caster === target ? "itself" : target.name}!`);
+  announce(caster, target, game){
+    game.message(`${caster.name} used ${this.name} on ${caster === target ? "itself" : target.name}!`);
   }
 };
 class Attack extends Card {};
 class Skill extends Card {};
 // Cards:
 class Strike extends Attack {
-  constructor () {
-    super();
-    this.name = "Strike";
-    this.icon = "⚔️ "
-    this.cost = 1;
-    this.makeText = (caster) => `Deal ${6 + caster.strength} damage.`;
+  name = "Strike"
+  icon = "⚔️ "
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045"
+  makeText(caster) {
+    return `Deal ${6 + caster.strength} damage.`;
   }
   effect(caster, target) {
     target.takeDamage(6 + caster.strength);
   }
 };
 class Flex extends Skill {
-  constructor () {
-    super();
-    this.name = "Flex";
-    this.icon = "💪"
-    this.cost = 1;
-    this.makeText = (caster) => "Gain 1 permanent strength.";
+  name = "Flex"
+  icon = "💪"
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5a/Flex.png/revision/latest?cb=20181016205957"
+  makeText(caster) {
+    return "Gain 1 permanent strength.";
   }
   effect(caster, target) {
     target.gainStatus("strength", 1);
   }
-};
-class Poison extends Attack {
-  constructor () {
-    super();
-    this.name = "Poison";
-    this.icon = "☣️ "
-    this.cost = 1;
-    this.makeText = (caster) => "Apply 5 poison.";
+}
+class DeadlyPoison extends Attack {
+  name = "Deadly Poison"
+  icon = "🤢"
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/b/b7/DeadlyPoison.png/revision/latest?cb=20181016211437"
+  makeText(caster) {
+    return "Apply 5 poison.";
   }
   effect(caster, target) {
     target.gainStatus("poison", 5);
   }
-};
-class Shield extends Skill {
-  constructor () {
-    super();
-    this.name = "Shield";
-    this.icon = "🛡 ";
-    this.cost = 1;
-    this.makeText = (caster) => "Gain 5 block.";
+}
+class Defend extends Skill {
+  name = "Defend"
+  icon = "🛡 "
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/7d/Defend_R.png/revision/latest?cb=20181016205732"
+  makeText(caster) {
+    return "Gain 5 block.";
   }
   effect(caster, target) {
     caster.gainStatus("block", 5);
   }
-};
-class Bandage extends Skill {
-  constructor () {
-    super();
-    this.name = "First Aid";
-    this.icon = "💉"
-    this.cost = 2;
-    this.makeText = (caster) => "Heal 2 hp.";
+}
+class BandageUp extends Skill {
+  name = "Bandage Up"
+  icon = "💉"
+  cost = 2
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/4e/BandageUp.png/revision/latest?cb=20181016212248"
+  makeText(caster) {
+    return "Heal 2 hp.";
   }
   effect(caster, target) {
     caster.takeDamage(-2);
   }
 };
 
-(async function runGame () {
-  const room = {
-    heroes: [new Hero({
-      name: "Hero",
-      icon: "🦸‍♂️ ",
-      hp: randInRange(45, 45),
-      energy: 3,
-      hand: 3,
-      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage(), new Poison(), new Flex()]
-    })],
-    monsters: [new Sneko(), new Zombie(), new Cultist()]
+if (typeof window === "undefined") { // Node
+  const userInterface = require('readline').createInterface({input: process.stdin});
+
+  new Game({
+    quit: process.exit,
+    message,
+    async getUserInput() {
+      console.log("Enter a card to play and a target.");
+      const question = "ex: shield self, strike zombie, end.";
+      console.log(question);
+      return new Promise(resolve => userInterface.question(question, resolve));
+    },
+    async render(room=this.room){
+      const hero = room.heroes[0];
+      message("Hand:");
+      hero.hand.forEach((card) => displayCard(card, hero));
+      message("Heroes:");
+      room.heroes.forEach(displayCharacter.bind(hero)); // show hero energy
+      message("Monsters:");
+      room.monsters.forEach(displayCharacter);
+    }
+  });
+
+  function message(stringOrError) {
+    stringOrError instanceof Error // https://stackoverflow.com/a/41407246/1862046
+      ? console.error("\x1b[31m%s\x1b[0m",stringOrError) // makes text red
+      : console.info(stringOrError);
   };
-  [...room.heroes, ...room.monsters].forEach(c => c.room = room);
-  let activeIndex = 0;
-  while (room.heroes.length > 0 && room.monsters.length > 0) {
-    let activeCharacter = [...room.heroes, ...room.monsters][activeIndex];
-    await activeCharacter.act();
-    activeIndex = (activeIndex + 1) % (room.heroes.length + room.monsters.length); // wrap around thru 0.
-  }
-  console.log(room.heroes.length > 0 ? "Room cleared!" : "Game over!");
-  process.exit(); // force program to quit
-})();
+
+  function displayCard(card, caster) {
+    message(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.makeText(caster)}`);
+  };
+
+  function displayCharacter (character) {
+    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
+  };
+
+  function repeat(icon, count) {
+    return Array(count).fill(icon).join("");
+  };
+}
 
 // Utility Functions:
-async function prompt (question) {
-  console.log(question);
-  return new Promise(resolve => userInterface.question(question, resolve));
-}
+
 function randInRange (from, to) {
   return from + Math.floor(Math.random() * (to - from));
-}
-function repeat(icon, count) {
-  return Array(count).fill(icon).join("");
-}
+};
 
 /*
 // class Game {
