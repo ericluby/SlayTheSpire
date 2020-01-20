@@ -12,7 +12,7 @@ class Game {
         hp: randInRange(45, 45),
         energy: 3,
         hand: 3,
-        deck: [new Strike(), new Strike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
+        deck: [new Cleave(), new TwinStrike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
         imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
       })],
       monsters: [new Snecko(), new JawWorm(), new Cultist()]
@@ -86,10 +86,10 @@ class Character {
     console.log(this.name + " died!");
     if (this instanceof Hero) {
       const indexInHeroes = this.room.heroes.indexOf(this);
-      this.room.heroes.splice(indexInHeroes, 1); // remove 1 item from list.
+      if (indexInHeroes !== -1) this.room.heroes.splice(indexInHeroes, 1); // remove 1 item from list.
     } else { // instanceof Monster
       const indexInMonsters = this.room.monsters.indexOf(this);
-      this.room.monsters.splice(indexInMonsters, 1); // remove 1 item from list.
+      if (indexInMonsters !== -1) this.room.monsters.splice(indexInMonsters, 1); // remove 1 item from list.
     }
   }
   discard(cardToDiscard){
@@ -223,7 +223,7 @@ class Skill extends Card {};
 // Cards:
 class Strike extends Attack {
   name = "Strike"
-  icon = "⚔️ "
+  icon = "🗡️ "
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045"
   makeText(caster) {
@@ -231,6 +231,39 @@ class Strike extends Attack {
   }
   effect(caster, target) {
     target.takeDamage(6 + caster.strength);
+  }
+};
+class TwinStrike extends Attack {
+  name = "Twin Strike"
+  icon = "⚔️ "
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/1/18/TwinStrike.png/revision/latest/scale-to-width-down/310?cb=20181016211122"
+  makeText(caster) {
+    return `Deal ${5 + caster.strength} damage twice.`;
+  }
+  effect(caster, target) {
+    target.takeDamage(5 + caster.strength);
+    target.takeDamage(5 + caster.strength);
+  }
+};
+class Cleave extends Attack {
+  name = "Cleave"
+  icon = "💫 "
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/c/c8/Cleave.png/revision/latest/scale-to-width-down/310?cb=20181016205731"
+  makeText(caster) {
+    return `Deal ${8 + caster.strength} damage to all enemies.`;
+  }
+  effect(caster, target) {
+    if (target instanceof Monster) {
+      target.room.monsters.forEach((currentMonster, index, arrayOfMonsters)=>{
+        currentMonster.takeDamage(8 + caster.strength);
+      });
+    }else {
+      target.room.heroes.forEach((currentHero, index, arrayOfHeroes)=>{
+        currentHero.takeDamage(8 + caster.strength);
+      });
+    }
   }
 };
 class Flex extends Skill {
