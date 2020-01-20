@@ -1,8 +1,3 @@
-// throw "HELP HOW DO I PASS AROUND MESSAGE INTO RANDOM CLASSES?"
-// could do it by passing (message, getUserInput) through methods
-// or could attach those to classes at instantiation
-// *or maybe can use as status methods of Game.message Game.getUserInput?*
-
 class Game {
   constructor({quit, message, getUserInput, render}){
     this.quit = quit.bind(this);
@@ -25,7 +20,7 @@ class Game {
     this.run();
   }
   quit(){ /* implemented by constructor */ }
-  message(message){ /* implemented by constructor */ }
+  message(stringOrError){ /* implemented by constructor */ }
   async getUserInput(){ /* implemented by constructor */ }
   async render(room=this.room){ /* implemented by constructor */ }
   async run(){
@@ -35,7 +30,7 @@ class Game {
       await activeCharacter.act(this);
       this.activeIndex = (this.activeIndex + 1) % (this.room.heroes.length + this.room.monsters.length); // wrap around thru 0.
     }
-    this.message(this.room.heroes.length > 0 ? "Room cleared; you won!" : "You died; game over!");
+    this.message(this.room.heroes.length > 0 ? "Room cleared; you won!" : new Error("You died; game over!"));
     this.quit();
   }
 }
@@ -59,10 +54,10 @@ class Character {
     this.drawHand();
   }
   async act({message, getUserInput, render}){ /* implemented by subclasses */ }
-  upkeep(){
+  upkeep(game){
     this.block = 0;
     if (this.poison > 0){   //poison effects
-      console.log(`${this.name} took ${this.poison} damage from poison.`);
+      game.message(`${this.name} took ${this.poison} damage from poison.`);
       this.takeDamage(this.poison);
       this.poison -= 1;
     }
@@ -86,7 +81,7 @@ class Character {
     else if (status === "strength") this.strength += amount;
     else throw new Error(`Unknown status: ${status}`);
   }
-  die(message){
+  die(){
     console.log(this.name + " died!");
     if (this instanceof Hero) {
       const indexInHeroes = this.room.heroes.indexOf(this);
@@ -121,7 +116,7 @@ class Character {
 };
 class Hero extends Character {
   async act(game){
-    this.upkeep();
+    this.upkeep(game);
     while (this.energy && this.hp > 0) {
       await game.render();
       const answer = await game.getUserInput();
@@ -135,12 +130,12 @@ class Hero extends Character {
           || [...this.room.heroes, ...this.room.monsters].filter(x => answer.toLowerCase().includes(x.name.toLowerCase()))[0];
         if (card.cost <= this.energy) {
           console.clear();
-          card.play(this, target);
+          card.play(this, target, game);
           this.discard(card);
           this.energy -= card.cost;
-        } else game.message("Not enough energy.");
+        } else game.message(new Error("Not enough energy."));
       } catch (error) {
-        game.message("Invalid input. Try again. " + error);
+        game.message(new Error("Invalid input. Try again. " + error));
       }
       if (this.room.monsters.length === 0) break; // already won!
     }
@@ -150,7 +145,7 @@ class Hero extends Character {
 };
 class Monster extends Character {  // can only play one card per turn despite AP.
   async act(game){
-    this.upkeep();
+    this.upkeep(game);
     while (this.energy && this.hp > 0) {
       const card = this.hand.filter(card => card.cost <= this.energy)[0];
       if (!card) break; // maybe can't play any cards.
@@ -158,9 +153,9 @@ class Monster extends Character {  // can only play one card per turn despite AP
       if (card instanceof Attack) {
         const randomEnemy = this.room.heroes[randInRange(0, this.room.heroes.length)];
         if (!randomEnemy) break; // already won!
-        card.play(this, randomEnemy);
+        card.play(this, randomEnemy, game);
       } else { // instanceof Skill
-        card.play(this, this);
+        card.play(this, this, game);
       }
     }
     game.message(this.name + " ends its turn.");
@@ -213,13 +208,13 @@ class Card {
     let remaining = cards.length+1;
     while(remaining--)cards.push(cards.splice(randInRange(0,remaining),1)[0]);
   }
-  play(caster, target){
-    this.announce(caster, target);
+  play(caster, target, game){
+    this.announce(caster, target, game);
     this.effect(caster, target);
   }
   effect(caster, target){} // actually does the effect, like takeDamage or gainStatus.
-  announce(caster, target){
-    console.log(`${caster.name} used ${this.name} on ${caster === target ? "itself" : target.name}!`);
+  announce(caster, target, game){
+    game.message(`${caster.name} used ${this.name} on ${caster === target ? "itself" : target.name}!`);
   }
 };
 class Attack extends Card {};
@@ -291,9 +286,7 @@ if (typeof window === "undefined") { // Node
 
   new Game({
     quit: process.exit,
-    message(message) {
-      console.log("[Message]", message);
-    },
+    message,
     async getUserInput() {
       console.log("Enter a card to play and a target.");
       const question = "ex: shield self, strike zombie, end.";
@@ -302,21 +295,27 @@ if (typeof window === "undefined") { // Node
     },
     async render(room=this.room){
       const hero = room.heroes[0];
-      console.log("Hand:");
+      message("Hand:");
       hero.hand.forEach((card) => displayCard(card, hero));
-      console.log("Heroes:");
+      message("Heroes:");
       room.heroes.forEach(displayCharacter.bind(hero)); // show hero energy
-      console.log("Monsters:");
+      message("Monsters:");
       room.monsters.forEach(displayCharacter);
     }
   });
 
+  function message(stringOrError) {
+    stringOrError instanceof Error // https://stackoverflow.com/a/41407246/1862046
+      ? console.error("\x1b[31m%s\x1b[0m",stringOrError) // makes text red
+      : console.info(stringOrError);
+  };
+
   function displayCard(card, caster) {
-    console.log(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.makeText(caster)}`);
+    message(`  ${card.icon} ${card.cost}⚡️ ${card.name}: ${card.makeText(caster)}`);
   };
 
   function displayCharacter (character) {
-    console.log(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
+    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
   };
 
   function repeat(icon, count) {
