@@ -135,27 +135,29 @@ class Monster extends Character {  // can only play one card per turn despite AP
   }
 };
 // Monsters
-class Sneko extends Monster {
+class Snecko extends Monster {
   constructor () {
     super({
-      name: "Sneko",
+      name: "Snecko",
       icon: "🐍 ",
       hp: randInRange(7, 15),
       energy: 1,
       hand: 1,
-      deck: [new Strike(), new Poison()]
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/44/Snecko.png/revision/latest?cb=20180916025017",
+      deck: [new Strike(), new DeadlyPoison()]
     });
   }
 };
-class Zombie extends Monster {
+class JawWorm extends Monster {
   constructor(){
     super({
-      name: "Zombie",
+      name: "Jaw Worm",
       icon: "🧟‍♂️ ",
       hp: randInRange(7, 15),
       energy: 2,
       hand: 2,
-      deck: [new Shield(), new Strike(), new Flex()]
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/d/d5/Jaw-worm-pretty.png/revision/latest?cb=20180110063613",
+      deck: [new Defend(), new Strike(), new Flex()]
     });
   }
 };
@@ -167,7 +169,8 @@ class Cultist extends Monster {
       hp: randInRange(7, 15),
       energy: 2,
       hand: 2,
-      deck: [new Bandage(), new Strike()]
+      image: "https://vignette.wikia.nocookie.net/slay-the-spire/images/c/c6/Cultist-pretty.png/revision/latest?cb=20180106102518",
+      deck: [new BandageUp(), new Strike()]
     });
   }
 };
@@ -196,6 +199,7 @@ class Strike extends Attack {
   name = "Strike"
   icon = "⚔️ "
   cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045"
   makeText(caster) {
     return `Deal ${6 + caster.strength} damage.`;
   }
@@ -207,6 +211,7 @@ class Flex extends Skill {
   name = "Flex"
   icon = "💪"
   cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5a/Flex.png/revision/latest?cb=20181016205957"
   makeText(caster) {
     return "Gain 1 permanent strength.";
   }
@@ -214,10 +219,11 @@ class Flex extends Skill {
     target.gainStatus("strength", 1);
   }
 }
-class Poison extends Attack {
-  name = "Poison"
+class DeadlyPoison extends Attack {
+  name = "Deadly Poison"
   icon = "☣️ "
   cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/b/b7/DeadlyPoison.png/revision/latest?cb=20181016211437"
   makeText(caster) {
     return "Apply 5 poison.";
   }
@@ -225,10 +231,11 @@ class Poison extends Attack {
     target.gainStatus("poison", 5);
   }
 }
-class Shield extends Skill {
-  name = "Shield"
+class Defend extends Skill {
+  name = "Defend"
   icon = "🛡 "
   cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/7d/Defend_R.png/revision/latest?cb=20181016205732"
   makeText(caster) {
     return "Gain 5 block.";
   }
@@ -236,10 +243,11 @@ class Shield extends Skill {
     caster.gainStatus("block", 5);
   }
 }
-class Bandage extends Skill {
-  name = "First Aid"
+class BandageUp extends Skill {
+  name = "Bandage Up"
   icon = "💉"
   cost = 2
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/4e/BandageUp.png/revision/latest?cb=20181016212248"
   makeText(caster) {
     return "Heal 2 hp.";
   }
@@ -251,14 +259,15 @@ class Bandage extends Skill {
 (async function runGame () {
   const room = {
     heroes: [new Hero({
-      name: "Hero",
+      name: "Ironclad",
       icon: "🦸‍♂️ ",
       hp: randInRange(45, 45),
       energy: 3,
       hand: 3,
-      deck: [new Strike(), new Strike(), new Shield(), new Shield(), new Bandage(), new Poison(), new Flex()]
+      imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
+      deck: [new Strike(), new Strike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()]
     })],
-    monsters: [new Sneko(), new Zombie(), new Cultist()]
+    monsters: [new Snecko(), new JawWorm(), new Cultist()]
   };
   [...room.heroes, ...room.monsters].forEach(c => c.room = room);
   let activeIndex = 0;
