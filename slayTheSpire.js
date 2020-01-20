@@ -193,60 +193,55 @@ class Attack extends Card {};
 class Skill extends Card {};
 // Cards:
 class Strike extends Attack {
-  constructor () {
-    super();
-    this.name = "Strike";
-    this.icon = "⚔️ "
-    this.cost = 1;
-    this.makeText = (caster) => `Deal ${6 + caster.strength} damage.`;
+  name = "Strike"
+  icon = "⚔️ "
+  cost = 1
+  makeText(caster) {
+    return `Deal ${6 + caster.strength} damage.`;
   }
   effect(caster, target) {
     target.takeDamage(6 + caster.strength);
   }
 };
 class Flex extends Skill {
-  constructor () {
-    super();
-    this.name = "Flex";
-    this.icon = "💪"
-    this.cost = 1;
-    this.makeText = (caster) => "Gain 1 permanent strength.";
+  name = "Flex"
+  icon = "💪"
+  cost = 1
+  makeText(caster) {
+    return "Gain 1 permanent strength.";
   }
   effect(caster, target) {
     target.gainStatus("strength", 1);
   }
-};
+}
 class Poison extends Attack {
-  constructor () {
-    super();
-    this.name = "Poison";
-    this.icon = "☣️ "
-    this.cost = 1;
-    this.makeText = (caster) => "Apply 5 poison.";
+  name = "Poison"
+  icon = "☣️ "
+  cost = 1
+  makeText(caster) {
+    return "Apply 5 poison.";
   }
   effect(caster, target) {
     target.gainStatus("poison", 5);
   }
-};
+}
 class Shield extends Skill {
-  constructor () {
-    super();
-    this.name = "Shield";
-    this.icon = "🛡 ";
-    this.cost = 1;
-    this.makeText = (caster) => "Gain 5 block.";
+  name = "Shield"
+  icon = "🛡 "
+  cost = 1
+  makeText(caster) {
+    return "Gain 5 block.";
   }
   effect(caster, target) {
     caster.gainStatus("block", 5);
   }
-};
+}
 class Bandage extends Skill {
-  constructor () {
-    super();
-    this.name = "First Aid";
-    this.icon = "💉"
-    this.cost = 2;
-    this.makeText = (caster) => "Heal 2 hp.";
+  name = "First Aid"
+  icon = "💉"
+  cost = 2
+  makeText(caster) {
+    return "Heal 2 hp.";
   }
   effect(caster, target) {
     caster.takeDamage(-2);
