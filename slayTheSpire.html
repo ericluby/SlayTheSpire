@@ -95,8 +95,13 @@
       }
 
       /* breathing animation for characters */
-      .character {
+      .character>img {
         animation: breathing 2s ease-in infinite;
+      }
+      .statuses {
+          color: white;
+          background: rgba(0,0,0,.5);
+          margin: 5px;
       }
       @keyframes breathing {
         0% { transform: scaleY(1) translateY(0); ; }
@@ -168,6 +173,7 @@
       </div>
       <!-- <img class="arrow" src="http://pluspng.com/img-png/png-red-arrow-png-small-medium-large-600.png" /> -->
     </div>
+    <script type="text/javascript" src="./toastify.min.js"></script>
     <script type="text/javascript" src="./slayTheSpire.js"></script>
     <script type="text/javascript">
       window.getUserInputResolve;
@@ -193,22 +199,23 @@
         async render(room=this.room){
           // TODO display health, energy, statuses, stategy
           console.log("[Render]", room);
-          document.querySelector(".left").innerHTML = room.heroes.reduce((html, hero) => (
-            html + `<div class="character hero" id="${hero.name}">
-              <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${hero.imageUrl}" />
-            </div>`
-          ), "");
-          document.querySelector(".right").innerHTML = room.monsters.reduce((html, monster) => (
-            html + `<div class="character monster" id="${monster.name}">
-              <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${monster.imageUrl}" />
-            </div>`
-          ), "");
+          window.room = room; // debug access
+          document.querySelector(".left").innerHTML = room.heroes.reduce(renderCharactersReducer("hero"), "");
+          document.querySelector(".right").innerHTML = room.monsters.reduce(renderCharactersReducer("monster"), "");
           document.querySelector(".hand").innerHTML = room.heroes[0].hand.reduce((html, card) => (
             html + `<div class="card" id="${card.name}"><img draggable="true" ondragstart="drag(event)" src="${card.imageUrl}" /></div>`
           ), "");
         }
       });
 
+      function renderCharactersReducer(heroOrMonster) {
+        return (html, character) => (
+          html + `<div class="character ${heroOrMonster}" id="${character.name}">
+            <div class="statuses">${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character instanceof Hero?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].icon :""}</div>
+            <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${character.imageUrl}" />
+          </div>`
+        )
+      }
       function endTurn() {
         window.getUserInputResolve("end");
       }
@@ -226,8 +233,10 @@
         (window.getUserInputResolve || noop)(cardName + " " + targetName);
       };
       function noop () { /* no-op */ }
+      function repeat(icon, count) {
+        return Array(count).fill(icon).join("");
+      };
     </script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </html>
 
 <!-- ASSETS -->

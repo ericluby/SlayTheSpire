@@ -30,6 +30,7 @@ class Game {
       await activeCharacter.act(this);
       this.activeIndex = (this.activeIndex + 1) % (this.room.heroes.length + this.room.monsters.length); // wrap around thru 0.
     }
+    await this.render();
     this.message(this.room.heroes.length > 0 ? "Room cleared; you won!" : new Error("You died; game over!"));
     this.quit();
   }
