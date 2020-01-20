@@ -12,7 +12,7 @@ class Game {
         hp: randInRange(45, 45),
         energy: 3,
         hand: 3,
-        deck: [new Strike(), new Strike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
+        deck: [new Strike(), new TwinStrike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
         imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
       })],
       monsters: [new Snecko(), new JawWorm(), new Cultist()]
@@ -223,7 +223,7 @@ class Skill extends Card {};
 // Cards:
 class Strike extends Attack {
   name = "Strike"
-  icon = "⚔️ "
+  icon = "🗡️ "
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045"
   makeText(caster) {
@@ -231,6 +231,19 @@ class Strike extends Attack {
   }
   effect(caster, target) {
     target.takeDamage(6 + caster.strength);
+  }
+};
+class TwinStrike extends Attack {
+  name = "Twin Strike"
+  icon = "⚔️ "
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/1/18/TwinStrike.png/revision/latest/scale-to-width-down/310?cb=20181016211122"
+  makeText(caster) {
+    return `Deal ${5 + caster.strength} damage twice.`;
+  }
+  effect(caster, target) {
+    target.takeDamage(5 + caster.strength);
+    target.takeDamage(5 + caster.strength);
   }
 };
 class Flex extends Skill {
