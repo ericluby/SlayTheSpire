@@ -211,7 +211,7 @@
       function renderCharactersReducer(heroOrMonster) {
         return (html, character) => (
           html + `<div class="character ${heroOrMonster}" id="${character.name}">
-            <div class="statuses">${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character instanceof Hero?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].icon :""}</div>
+            <div class="statuses">${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.weak?character.weak+"☮️ ":""}${character.poison?character.poison+"🤢 ":""}${character instanceof Hero?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].icon :""}</div>
             <img ondrop="drop(event)" ondragover="allowDrop(event)" src="${character.imageUrl}" />
           </div>`
         )

@@ -1,3 +1,5 @@
+const WEAK_DEBUFF = .75;
+
 class Game {
   constructor({quit, message, getUserInput, render}){
     this.quit = quit.bind(this);
@@ -12,7 +14,7 @@ class Game {
         hp: randInRange(45, 45),
         energy: 3,
         hand: 3,
-        deck: [new Cleave(), new TwinStrike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex()],
+        deck: [new Cleave(), new TwinStrike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex(), new Intimidate()],
         imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
       })],
       monsters: [new Snecko(), new JawWorm(), new Cultist()]
@@ -52,6 +54,7 @@ class Character {
     this.block = 0;
     this.poison = 0;
     this.strength = 0;
+    this.weak = 0;
     this.drawHand();
   }
   async act({message, getUserInput, render}){ /* implemented by subclasses */ }
@@ -64,7 +67,13 @@ class Character {
     }
     this.energy = this.maxEnergy;
   }
+  cleanUp(game){
+    this.weak = this.weak ? (this.weak - 1) : 0;
+    game.message(this.name + " ends its turn.");
+    this.discardHand();
+  }
   takeDamage(damage){
+    damage = Math.round(damage);
     if (damage < 0) return this.hp -= damage; // can be negative to heal
     if (this.block >= damage) {
       this.block -= damage;
@@ -80,6 +89,7 @@ class Character {
     if (status === "block") this.block += amount;
     else if (status === "poison") this.poison += amount;
     else if (status === "strength") this.strength += amount;
+    else if (status === "weak") this.weak += amount;
     else throw new Error(`Unknown status: ${status}`);
   }
   die(){
@@ -140,8 +150,7 @@ class Hero extends Character {
       }
       if (this.room.monsters.length === 0) break; // already won!
     }
-    game.message(this.name + " ends its turn.");
-    this.discardHand();
+    this.cleanUp(game);
   }
 };
 class Monster extends Character {  // can only play one card per turn despite AP.
@@ -159,8 +168,7 @@ class Monster extends Character {  // can only play one card per turn despite AP
         card.play(this, this, game);
       }
     }
-    game.message(this.name + " ends its turn.");
-    this.discardHand();
+    this.cleanUp(game);
   }
 };
 // Monsters
@@ -227,10 +235,10 @@ class Strike extends Attack {
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/06/Strike_R.png/revision/latest?cb=20181016211045"
   makeText(caster) {
-    return `Deal ${6 + caster.strength} damage.`;
+    return `Deal ${(caster.weak ? WEAK_DEBUFF : 1) * (6 + caster.strength)} damage.`
   }
   effect(caster, target) {
-    target.takeDamage(6 + caster.strength);
+    target.takeDamage((caster.weak ? WEAK_DEBUFF : 1) * (6 + caster.strength));
   }
 };
 class TwinStrike extends Attack {
@@ -239,11 +247,11 @@ class TwinStrike extends Attack {
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/1/18/TwinStrike.png/revision/latest/scale-to-width-down/310?cb=20181016211122"
   makeText(caster) {
-    return `Deal ${5 + caster.strength} damage twice.`;
+    return `Deal ${(caster.weak ? WEAK_DEBUFF : 1) * (5 + caster.strength)} damage twice.`;
   }
   effect(caster, target) {
-    target.takeDamage(5 + caster.strength);
-    target.takeDamage(5 + caster.strength);
+    target.takeDamage((caster.weak ? WEAK_DEBUFF : 1) * (5 + caster.strength));
+    target.takeDamage((caster.weak ? WEAK_DEBUFF : 1) * (5 + caster.strength));
   }
 };
 class Cleave extends Attack {
@@ -252,20 +260,40 @@ class Cleave extends Attack {
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/c/c8/Cleave.png/revision/latest/scale-to-width-down/310?cb=20181016205731"
   makeText(caster) {
-    return `Deal ${8 + caster.strength} damage to all enemies.`;
+    return `Deal ${(caster.weak ? WEAK_DEBUFF : 1) * (8 + caster.strength)} damage to all enemies.`;
   }
   effect(caster, target) {
     if (target instanceof Monster) {
       target.room.monsters.forEach((currentMonster, index, arrayOfMonsters)=>{
-        currentMonster.takeDamage(8 + caster.strength);
+        currentMonster.takeDamage((caster.weak ? WEAK_DEBUFF : 1) * (8 + caster.strength));
       });
     }else {
       target.room.heroes.forEach((currentHero, index, arrayOfHeroes)=>{
-        currentHero.takeDamage(8 + caster.strength);
+        currentHero.takeDamage((caster.weak ? WEAK_DEBUFF : 1) * (8 + caster.strength));
       });
     }
   }
 };
+class Intimidate extends Skill {
+  name = "Intimidate"
+  icon = "😱"
+  cost = 0
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/72/Intimidate.png/revision/latest/scale-to-width-down/310?cb=20181016210817"
+  makeText(caster) {
+    return "apply 1 weak to all enemies.";
+  }
+  effect(caster, target) {
+    if (target instanceof Monster) {
+      target.room.monsters.forEach((currentMonster, index, arrayOfMonsters)=>{
+        currentMonster.gainStatus("weak", 1);
+      });
+    }else {
+      target.room.heroes.forEach((currentHero, index, arrayOfHeroes)=>{
+        currentHero.gainStatus("weak", 1);
+      });
+    }
+  }
+}
 class Flex extends Skill {
   name = "Flex"
   icon = "💪"
@@ -349,7 +377,7 @@ if (typeof window === "undefined") { // Node
   };
 
   function displayCharacter (character) {
-    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
+    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.weak?character.weak+"☮️ ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
   };
 
   function repeat(icon, count) {
