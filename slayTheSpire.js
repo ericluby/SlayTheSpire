@@ -1,4 +1,5 @@
 const WEAK_DEBUFF = .75;
+const FRAIL_DEBUFF = .75;
 
 class Game {
   constructor({quit, message, getUserInput, render}){
@@ -14,7 +15,7 @@ class Game {
         hp: randInRange(45, 45),
         energy: 3,
         hand: 3,
-        deck: [new Cleave(), new TwinStrike(), new Defend(), new Defend(), new BandageUp(), new DeadlyPoison(), new Flex(), new Intimidate()],
+        deck: [new Cleave(), new TwinStrike(), new Defend(), new Shame(), new BandageUp(), new DeadlyPoison(), new Flex(), new Intimidate()],
         imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/70/Ironclad.png/revision/latest?cb=20181020082717",
       })],
       monsters: [new Snecko(), new JawWorm(), new Cultist()]
@@ -55,6 +56,7 @@ class Character {
     this.poison = 0;
     this.strength = 0;
     this.weak = 0;
+    this.frail = 0;
     this.drawHand();
   }
   async act({message, getUserInput, render}){ /* implemented by subclasses */ }
@@ -69,6 +71,7 @@ class Character {
   }
   cleanUp(game){
     this.weak = this.weak ? (this.weak - 1) : 0;
+    this.frail = this.frail ? (this.frail - 1) : 0;
     game.message(this.name + " ends its turn.");
     this.discardHand();
   }
@@ -90,6 +93,7 @@ class Character {
     else if (status === "poison") this.poison += amount;
     else if (status === "strength") this.strength += amount;
     else if (status === "weak") this.weak += amount;
+    else if (status === "frail") this.frail += amount;
     else throw new Error(`Unknown status: ${status}`);
   }
   die(){
@@ -136,7 +140,7 @@ class Hero extends Character {
         const card = this.hand.filter(x => answer.includes(x.icon.trim()))[0]
           || this.hand.filter(x => answer.toLowerCase().includes(x.name.toLowerCase()))[0];
         let target;
-        if (answer.toLowerCase().includes("self") || answer.toLowerCase().includes("me")) target = this;
+        if (answer.toLowerCase().includes("self") || answer.toLowerCase().includes(" me")) target = this;
         else target = [...this.room.heroes, ...this.room.monsters].filter(x => answer.includes(x.icon.trim()))[0]
           || [...this.room.heroes, ...this.room.monsters].filter(x => answer.toLowerCase().includes(x.name.toLowerCase()))[0];
         if (card.cost <= this.energy) {
@@ -206,7 +210,7 @@ class Cultist extends Monster {
       hp: randInRange(7, 15),
       energy: 2,
       hand: 2,
-      deck: [new BandageUp(), new Strike()],
+      deck: [new BandageUp(), new Strike(), new Shame()],
       imageUrl: "https://vignette.wikia.nocookie.net/slay-the-spire/images/c/c6/Cultist-pretty.png/revision/latest?cb=20180106102518",
     });
   }
@@ -294,6 +298,18 @@ class Intimidate extends Skill {
     }
   }
 }
+class Shame extends Skill {
+  name = "Shame"
+  icon = "👇"
+  cost = 1
+  imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/0/07/Shame.png/revision/latest?cb=20180828093706"
+  makeText(caster) {
+    return "Apply 1 frail to enemy.";
+  }
+  effect(caster, target) {
+    target.gainStatus("frail", 1);
+  }
+}
 class Flex extends Skill {
   name = "Flex"
   icon = "💪"
@@ -320,14 +336,14 @@ class DeadlyPoison extends Attack {
 }
 class Defend extends Skill {
   name = "Defend"
-  icon = "🛡 "
+  icon = "🛡️"
   cost = 1
   imageUrl = "https://vignette.wikia.nocookie.net/slay-the-spire/images/7/7d/Defend_R.png/revision/latest?cb=20181016205732"
   makeText(caster) {
-    return "Gain 5 block.";
+    return `Gain ${Math.round((caster.frail ? FRAIL_DEBUFF : 1) * 5)} block.`
   }
   effect(caster, target) {
-    caster.gainStatus("block", 5);
+    target.gainStatus("block", Math.round((caster.frail ? FRAIL_DEBUFF : 1) * 5));
   }
 }
 class BandageUp extends Skill {
@@ -377,7 +393,7 @@ if (typeof window === "undefined") { // Node
   };
 
   function displayCharacter (character) {
-    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡  ":""}${character.strength?character.strength+"💪 ":""}${character.weak?character.weak+"☮️ ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
+    message(`  ${character.icon} ${character.name} ${character.hp}❤️  ${character.block?character.block+"🛡️ ":""}${character.strength?character.strength+"💪 ":""}${character.weak?character.weak+"☮️ ":""}${character.frail?character.frail+"🤕 ":""}${character.poison?character.poison+"🤢 ":""}${character===this?repeat("⚡️", character.energy):""}${character instanceof Monster ? character.hand[0].name :""}`);
   };
 
   function repeat(icon, count) {
