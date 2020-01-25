@@ -12,6 +12,9 @@
                 border-collapse: separate;
                 border-spacing: 20px;
             }
+            tr {
+              text-align: center;
+            }
             /* table, th, td { border: 1px solid orange; } */
             .room {
               background-color: #acbec5;
@@ -43,6 +46,120 @@
               <!-- <tr><td colspan="6">🔚</td></tr> -->
         </tbody></table>
         <script type="text/javascript">
+            /* what a map looks like:
+            https://steamuserimages-a.akamaihd.net/ugc/957481092845833078/A708E7902EE6E6EFECD06D1FB5FB906BB9EB8D51/
+            */
+
+            const roomImgs = {
+              "❓": "https://vignette.wikia.nocookie.net/slay-the-spire/images/f/f3/Unknown1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215208",
+              "💰": "https://vignette.wikia.nocookie.net/slay-the-spire/images/3/35/Shop1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215302",
+              "🔥": "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/46/Rest1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215342",
+              "👹": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Enemy1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215423",
+              "👿": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Elite1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215508",
+              "🧳": "https://vignette.wikia.nocookie.net/slay-the-spire/images/9/9e/Chest1.jpg/revision/latest?cb=20180120215546",
+              "🔚": "https://vignette.wikia.nocookie.net/slay-the-spire/images/6/6f/Boss.jpg/revision/latest/scale-to-width-down/180?cb=20180120221339",
+            }
+            const roomTypes = Object.keys(roomImgs);
+
+            const floors = makeLevel({
+              numFloors: 16,
+              floorWidth: 6,
+              maxRooms: 4,
+              minRooms: 2,
+              fixed: {
+                1: "🔥",
+                8: "🧳",
+                15: "👹"
+              }
+            });
+
+            renderFloors(document.querySelector("tbody"), floors);
+
+            function makeLevel ({numFloors, floorWidth, maxRooms, minRooms, fixed}) {
+              const floors = [[makeRoom("🔚")]];
+              while (floors.length < numFloors) {
+                const floor = Array(floorWidth).fill(null);
+                let roomsInFloor = Math.ceil(Math.random()*(maxRooms-minRooms))+minRooms;
+                while (roomsInFloor) {
+                  const roomi = Math.floor(Math.random()*floorWidth);
+                  if (floor[roomi]) continue;
+                  floor[roomi] = makeRoom(fixed[floors.length]);
+                  roomsInFloor--;
+                }
+                floors.push(floor);
+              }
+
+              // connect floors
+              floors.slice(1).forEach((floor, floori) => {
+                floor.forEach((room, roomi) => {
+                  if (!room) return;
+                  // find closest up room
+                  const upFloor = floors[floori] // floori is already offset -1
+                  let left = roomi;
+                  let right = roomi;
+                  let closestUpRoom = null;
+                  while (!closestUpRoom) {
+                    closestUpRoom = upFloor[left] || upFloor[right];
+                    left > 0 && left--
+                    right < upFloor.length-1 && right++
+                  }
+                  // attach to closest up room
+                  room.upRooms.push(closestUpRoom);
+                  closestUpRoom.downRooms.push(room);
+
+                });
+              });
+
+              // fix unattached rooms
+              floors.slice(1, -1).forEach((floor, floori) => {
+                floor.forEach((room, roomi) => {
+                  if (!room || room.downRooms.length) return;
+                  // find closest down room
+                  const downFloor = floors[floori+2] // floori is already offset -1
+                  let left = roomi;
+                  let right = roomi;
+                  let closestDownRoom = null;
+                  while (!closestDownRoom) {
+                    closestDownRoom = downFloor[left] || downFloor[right];
+                    left > 0 && left--
+                    right < downFloor.length-1 && right++
+                  }
+                  // attach to closest up room
+                  room.downRooms.push(closestDownRoom);
+                  closestDownRoom.upRooms.push(room);
+                });
+              });
+
+              return floors;
+            }
+            function randomRoomType () {
+              return roomTypes[Math.floor(Math.random()*(roomTypes.length-2))];
+            };
+            function makeRoom (type = randomRoomType()) {
+              return {type, upRooms: [], downRooms: []};
+            };
+
+            function renderFloors(tbodyEl, floors) {
+              floors.map((floor, floorIndex) => {
+                const floorEl = document.createElement("tr");
+                floorEl.classList.add("floor");
+                floor.forEach((room, roomIndex) => {
+                  const el = document.createElement("td");
+                  floorEl.appendChild(el);
+                  if (!room) return;
+                  room.el = el;
+                  room.el.innerHTML = `<img src="${roomImgs[room.type]}" />`;
+                  room.el.classList.add("room");
+                  room.sel = `#f${floorIndex}r${roomIndex}`;
+                  room.el.id = `f${floorIndex}r${roomIndex}`;
+                });
+                tbodyEl.appendChild(floorEl);
+              })
+              tbodyEl.querySelector("#f0r0").colSpan = 6; // must come before connectSelectors to get correct centerpoint
+              tbodyEl.querySelector("#f0r0>img").style = "width:180px;height:126px;" // must come before connectSelectors to get correct centerpoint
+              floors.forEach(floor => floor.forEach((room, roomi) => room && room.downRooms.forEach((down, downi) => connectSelectors(1, room.sel, down.sel))));
+            }
+
             // adapted from https://stackoverflow.com/a/8673281/1862046
             function connectSelectors(thickness, sel1, sel2) { // draw a line connecting elements
                 var el1 = document.querySelector(sel1);
@@ -66,134 +183,16 @@
                 // make div.line and position it absolutely
                 var htmlLine = `<div class="line" id="${sel1}->${sel2}" style="height:${thickness}px; left:${cx}px; top:${cy}px; width:${length}px; -moz-transform:rotate(${angle}deg); -webkit-transform:rotate(${angle}deg); -o-transform:rotate(${angle}deg); -ms-transform:rotate(${angle}deg); transform:rotate(${angle}deg);" />`;
                 el1.innerHTML += htmlLine;
-                function getOffset( el ) {
-                    var rect = el.getBoundingClientRect();
-                    return {
-                        left: rect.left + window.pageXOffset,
-                        top: rect.top + window.pageYOffset,
-                        width: rect.width || el.offsetWidth,
-                        height: rect.height || el.offsetHeight
-                    };
-                }
             }
-
-            /* what a map looks like:
-            https://steamuserimages-a.akamaihd.net/ugc/957481092845833078/A708E7902EE6E6EFECD06D1FB5FB906BB9EB8D51/
-            */
-
-            const roomImgs = {
-              "❓": "https://vignette.wikia.nocookie.net/slay-the-spire/images/f/f3/Unknown1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215208",
-              "💰": "https://vignette.wikia.nocookie.net/slay-the-spire/images/3/35/Shop1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215302",
-              "🔥": "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/46/Rest1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215342",
-              "👹": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Enemy1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215423",
-              "👿": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Elite1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215508",
-              "🧳": "https://vignette.wikia.nocookie.net/slay-the-spire/images/9/9e/Chest1.jpg/revision/latest?cb=20180120215546",
-              "🔚": "https://vignette.wikia.nocookie.net/slay-the-spire/images/6/6f/Boss.jpg/revision/latest/scale-to-width-down/180?cb=20180120221339",
+            function getOffset( el ) {
+              var rect = el.getBoundingClientRect();
+              return {
+                left: rect.left + window.pageXOffset,
+                top: rect.top + window.pageYOffset,
+                width: rect.width || el.offsetWidth,
+                height: rect.height || el.offsetHeight
+              };
             }
-            const roomTypes = Object.keys(roomImgs);
-
-            // class Level {
-            //   constructor (levelNumber) {
-            //     // decide boss
-            //     // choose monsters/modifiers
-            //     // generate 16 floors
-            //     this.floors = Array.from({length: 16}, () => new Floor(1,3));
-            //   }
-            // };
-            // class Floor {
-            //   constructor (minRooms, maxRooms, optionalRoomType) {
-            //     const numRooms = Math.ceil(Math.random()*(maxRooms-minRooms))+minRooms;
-            //     this.rooms = Array(maxRooms).fill(0);
-            //     const eventRooms = Array.from({length: numRooms}, () => new Room(optionalRoomType));
-            //     while (eventRooms.length) {
-            //       const index = Math.floor(Math.random()*numRooms);
-            //       if (!this.rooms[index]) this.rooms[index] = eventRooms.pop();
-            //     }
-            //     // this.rooms now filled with the right number of events
-            //   }
-            // };
-            // class Room {
-            //   constructor (roomType, inputs, outputs) {
-            //     this.roomType = roomType || roomTypes[Math.floor(Math.random()*roomTypes.length-2)];
-            //   }
-            // };
-            // console.log(new Level());
-
-            function makeLevel () {
-              // start from boss
-              const boss = makeRoom(0, "🔚");
-              const floors = [[boss]];
-              const roomsToProcess = Array.from({length: 6}, () => makeRoom(1));
-              roomsToProcess.forEach(roomToProcess => {
-                roomToProcess.upRooms.push(boss);
-                boss.downRooms.push(roomToProcess);
-              });
-              // split 3-5 campfires
-              while (roomsToProcess.length) {
-                const roomToProcess = roomsToProcess.shift(); // pops off front like a queue
-                floors[roomToProcess.floor] = floors[roomToProcess.floor] || [];
-                const floor = floors[roomToProcess.floor]
-                floor.push(roomToProcess); // add room to its floor
-                // each room then generates 1 next room, 2 next rooms, or joins adjacent room's next room
-                if (floors.length < 5) {
-                  // one new room
-                  const newDownRoom = makeRoom(roomToProcess.floor + 1);
-                  roomToProcess.downRooms.push(newDownRoom);
-                  newDownRoom.upRooms.push(roomToProcess);
-                  roomsToProcess.push(newDownRoom);
-                }
-                // ([oneNewRoom, twoNewRooms, joinAdjacentRoom])[Math.floor(Math.random()*3)]();
-                // const roomsToProcess = Array.from({length: 6, () => ({type: randomRoomType(), upRooms: [boss], downRooms: []})})
-              }
-              // cannot make next rooms if next floor already has max rooms
-              return floors;
-            };
-            function randomRoomType () {
-              return roomTypes[Math.floor(Math.random()*(roomTypes.length-2))];
-            };
-            function makeRoom (floor, type = randomRoomType()) {
-              return {floor, type, upRooms: [], downRooms: []};
-            };
-
-            makeLevel().map((floor, floorIndex) => {
-              const floorEl = document.createElement("tr");
-              floorEl.classList.add("floor");
-              floor.forEach((room, roomIndex) => {
-                room.el = document.createElement("td");
-                room.el.innerHTML = `<img src="${roomImgs[room.type]}" />`;
-                room.el.classList.add("room");
-                room.sel = `#f${floorIndex}r${roomIndex}`;
-                room.el.id = `f${floorIndex}r${roomIndex}`;
-                floorEl.appendChild(room.el);
-              });
-              document.querySelector("tbody").appendChild(floorEl);
-              return floor // to allow chaining
-            }).forEach(floor => floor.forEach((room, roomi) => room.downRooms.forEach((down, downi) => connectSelectors(1, room.sel, down.sel))));
-
-            // ;["👹","❓","👿","🔥","💰","👹","🧳","👹","❓","👿","👹","❓","👹","👿","🔥","🔚"
-            // ].reverse().map((roomType, floorIndex) => {
-            //     const col = Math.floor(Math.random()*3) + 1
-            //     // roomType = `<img src="${roomImgs[roomType]}" />`
-            //     col1 = col === 1 ? roomType : ""
-            //     col2 = col === 2 ? roomType : ""
-            //     col3 = col === 3 ? roomType : ""
-            //     room = 'class="room"'
-            //     const row = `<tr class="floor" id="fl_${floorIndex}"><td ${col1?room:''}>${col1}</td><td ${col2?room:''}>${col2}</td><td ${col3?room:''}>${col3}</td></tr>`
-            //     document.querySelector("tbody").innerHTML += row
-            //     return `#fl_${floorIndex}>.room`
-            // }).forEach((selector, index, selectors) => {
-            //     index && connectSelectors(1, selectors[index-1], selector);
-            // })
-
-            // Map
-            // Levels (1,2,3)
-            // Floors (16/level)
-            // Rooms 3-5/floor
-            // final level is boss
-            // penultimate level is 🔥
-            // mid level is 🧳
-            // first level is 👿
         </script>
     </body>
 </html>
-<!-- Map Icons: https://slay-the-spire.fandom.com/wiki/Map_locations -->
