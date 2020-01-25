@@ -75,6 +75,10 @@
 
             renderFloors(document.querySelector("tbody"), floors);
 
+            function enterRoom (room) {
+              window.alert(`Entering room ${room.sel} ${room.type}`);
+            };
+
             function makeLevel ({numFloors, floorWidth, maxRooms, minRooms, fixed}) {
               const floors = [[makeRoom("🔚")]];
               while (floors.length < numFloors) {
@@ -150,6 +154,7 @@
                   room.el = el;
                   room.el.innerHTML = `<img src="${roomImgs[room.type]}" />`;
                   room.el.classList.add("room");
+                  room.el.addEventListener("click", () => enterRoom(room));
                   room.sel = `#f${floorIndex}r${roomIndex}`;
                   room.el.id = `f${floorIndex}r${roomIndex}`;
                 });
