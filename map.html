@@ -49,10 +49,10 @@
                 var off2 = getOffset(el2);
                 // center point of el1
                 var x1 = off1.left + off1.width/2;
-                var y1 = off1.top + off1.height/2;
+                var y1 = off1.top + off1.height;
                 // center point of el2
                 var x2 = off2.left + off2.width/2;
-                var y2 = off2.top + off2.height/2;
+                var y2 = off2.top //+ off2.height/2;
                 // connecting line length
                 var length = Math.sqrt(((x2-x1) * (x2-x1)) + ((y2-y1) * (y2-y1)));
                 // connecting line midpoint
@@ -87,7 +87,7 @@
             ;["👹","❓","👿","🔥","💰","👹","🧳","👹","❓","👿","👹","❓","👹","👿","🔥","🔚"
             ].reverse().map((roomType, floorIndex) => {
                 const col = Math.floor(Math.random()*3) + 1
-                // roomType = `<img src="${roomImgs[roomType]}" />`
+                roomType = `<img src="${roomImgs[roomType]}" />`
                 col1 = col === 1 ? roomType : ""
                 col2 = col === 2 ? roomType : ""
                 col3 = col === 3 ? roomType : ""
