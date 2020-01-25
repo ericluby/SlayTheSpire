@@ -14,10 +14,13 @@
             }
             /* table, th, td { border: 1px solid orange; } */
             .room {
-              /* background-color: white;
-              border-radius: 20px; */
-              /* width: 40px;
-              height: 40px; */
+              background-color: #acbec5;
+              border-radius: 20px;
+              width: 0px;
+              height: 0px;
+            }
+            .room:hover {
+              cursor: n-resize; /* or pointer */
             }
             .room img { /* for cropping */
                 width: 50px;
@@ -49,10 +52,10 @@
                 var off2 = getOffset(el2);
                 // center point of el1
                 var x1 = off1.left + off1.width/2;
-                var y1 = off1.top + off1.height;
+                var y1 = off1.top + off1.height/2;
                 // center point of el2
                 var x2 = off2.left + off2.width/2;
-                var y2 = off2.top //+ off2.height/2;
+                var y2 = off2.top + off2.height/2;
                 // connecting line length
                 var length = Math.sqrt(((x2-x1) * (x2-x1)) + ((y2-y1) * (y2-y1)));
                 // connecting line midpoint
@@ -74,6 +77,10 @@
                 }
             }
 
+            /* what a map looks like:
+            https://steamuserimages-a.akamaihd.net/ugc/957481092845833078/A708E7902EE6E6EFECD06D1FB5FB906BB9EB8D51/
+            */
+
             const roomImgs = {
               "❓": "https://vignette.wikia.nocookie.net/slay-the-spire/images/f/f3/Unknown1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215208",
               "💰": "https://vignette.wikia.nocookie.net/slay-the-spire/images/3/35/Shop1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215302",
@@ -87,7 +94,7 @@
             ;["👹","❓","👿","🔥","💰","👹","🧳","👹","❓","👿","👹","❓","👹","👿","🔥","🔚"
             ].reverse().map((roomType, floorIndex) => {
                 const col = Math.floor(Math.random()*3) + 1
-                roomType = `<img src="${roomImgs[roomType]}" />`
+                // roomType = `<img src="${roomImgs[roomType]}" />`
                 col1 = col === 1 ? roomType : ""
                 col2 = col === 2 ? roomType : ""
                 col3 = col === 3 ? roomType : ""
