@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>StS Map</title>
+        <style media="screen">
+            body {
+              background-color: #acbec5; /* matches room imgs */
+            }
+            table {
+                /* border-collapse: collapse; */
+                border-collapse: separate;
+                border-spacing: 20px;
+            }
+            /* table, th, td { border: 1px solid orange; } */
+            .room {
+              /* background-color: white;
+              border-radius: 20px; */
+              /* width: 40px;
+              height: 40px; */
+            }
+            .room img { /* for cropping */
+                width: 50px;
+                height: 40px;
+                object-fit: none;
+                object-position: -2px -4px;
+            }
+            .line {
+                padding: 0px;
+                margin: 0px;
+                position: absolute;
+                border-top: grey dashed 3px;
+                border-left: grey dashed 3px;
+                z-index: -10;
+            }
+        </style>
+    </head>
+    <body>
+        <table id="map"><tbody>
+              <!-- <tr><td colspan="6">🔚</td></tr> -->
+        </tbody></table>
+        <script type="text/javascript">
+            // adapted from https://stackoverflow.com/a/8673281/1862046
+            function connectSelectors(sel1, sel2, thickness) { // draw a line connecting elements
+                var el1 = document.querySelector(sel1);
+                var el2 = document.querySelector(sel2);
+                // get offsets
+                var off1 = getOffset(el1);
+                var off2 = getOffset(el2);
+                // center point of el1
+                var x1 = off1.left + off1.width/2;
+                var y1 = off1.top + off1.height/2;
+                // center point of el2
+                var x2 = off2.left + off2.width/2;
+                var y2 = off2.top + off2.height/2;
+                // connecting line length
+                var length = Math.sqrt(((x2-x1) * (x2-x1)) + ((y2-y1) * (y2-y1)));
+                // connecting line midpoint
+                var cx = ((x1 + x2) / 2) - (length / 2);
+                var cy = ((y1 + y2) / 2) - (thickness / 2);
+                // connecting line angle
+                var angle = Math.atan2((y1-y2),(x1-x2))*(180/Math.PI);
+                // make div.line and position it absolutely
+                var htmlLine = "<div class='line' style=' height:" + thickness + "px; left:" + cx + "px; top:" + cy + "px; width:" + length + "px; -moz-transform:rotate(" + angle + "deg); -webkit-transform:rotate(" + angle + "deg); -o-transform:rotate(" + angle + "deg); -ms-transform:rotate(" + angle + "deg); transform:rotate(" + angle + "deg);' />";
+                el1.innerHTML += htmlLine;
+                function getOffset( el ) {
+                    var rect = el.getBoundingClientRect();
+                    return {
+                        left: rect.left + window.pageXOffset,
+                        top: rect.top + window.pageYOffset,
+                        width: rect.width || el.offsetWidth,
+                        height: rect.height || el.offsetHeight
+                    };
+                }
+            }
+
+            const roomImgs = {
+              "❓": "https://vignette.wikia.nocookie.net/slay-the-spire/images/f/f3/Unknown1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215208",
+              "💰": "https://vignette.wikia.nocookie.net/slay-the-spire/images/3/35/Shop1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215302",
+              "🧳": "https://vignette.wikia.nocookie.net/slay-the-spire/images/9/9e/Chest1.jpg/revision/latest?cb=20180120215546",
+              "🔥": "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/46/Rest1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215342",
+              "👹": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Enemy1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215423",
+              "👿": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Elite1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215508",
+              "🔚": "https://vignette.wikia.nocookie.net/slay-the-spire/images/6/6f/Boss.jpg/revision/latest/scale-to-width-down/180?cb=20180120221339",
+            }
+
+            ;["👹","❓","👿","🔥","💰","👹","🧳","👹","❓","👿","👹","❓","👹","👿","🔥","🔚"
+            ].reverse().map((roomType, floorIndex) => {
+                const col = Math.floor(Math.random()*3) + 1
+                // roomType = `<img src="${roomImgs[roomType]}" />`
+                col1 = col === 1 ? roomType : ""
+                col2 = col === 2 ? roomType : ""
+                col3 = col === 3 ? roomType : ""
+                room = 'class="room"'
+                const row = `<tr class="floor" id="fl_${floorIndex}"><td ${col1?room:''}>${col1}</td><td ${col2?room:''}>${col2}</td><td ${col3?room:''}>${col3}</td></tr>`
+                document.querySelector("tbody").innerHTML += row
+                return `#fl_${floorIndex}>.room`
+            }).forEach((selector, index, selectors) => {
+                index && connectSelectors(selectors[index-1], selector, 1);
+            })
+            // Map
+            // Levels (1,2,3)
+            // Floors (16/level)
+            // Rooms 3-5/floor
+            // final level is boss
+            // penultimate level is 🔥
+            // mid level is 🧳
+            // first level is 👿
+        </script>
+    </body>
+</html>
+<!-- Map Icons: https://slay-the-spire.fandom.com/wiki/Map_locations -->
