@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>StS Map</title>
+        <style media="screen">
+            body {
+              background-color: #acbec5; /* matches room imgs */
+            }
+            table {
+                /* border-collapse: collapse; */
+                border-collapse: separate;
+                border-spacing: 20px;
+            }
+            tr {
+              text-align: center;
+            }
+            /* table, th, td { border: 1px solid orange; } */
+            .room {
+              background-color: #acbec5;
+              border-radius: 20px;
+              width: 0px;
+              height: 0px;
+            }
+            .room:hover {
+              cursor: n-resize; /* or pointer */
+            }
+            .room img { /* for cropping */
+                width: 50px;
+                height: 40px;
+                object-fit: none;
+                object-position: -2px -4px;
+            }
+            .line {
+                padding: 0px;
+                margin: 0px;
+                position: absolute;
+                border-top: grey dashed 3px;
+                border-left: grey dashed 3px;
+                z-index: -10;
+            }
+        </style>
+    </head>
+    <body>
+        <table id="map"><tbody>
+              <!-- <tr><td colspan="6">🔚</td></tr> -->
+        </tbody></table>
+        <script type="text/javascript">
+            /* what a map looks like:
+            https://steamuserimages-a.akamaihd.net/ugc/957481092845833078/A708E7902EE6E6EFECD06D1FB5FB906BB9EB8D51/
+            */
+
+            const roomImgs = {
+              "❓": "https://vignette.wikia.nocookie.net/slay-the-spire/images/f/f3/Unknown1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215208",
+              "💰": "https://vignette.wikia.nocookie.net/slay-the-spire/images/3/35/Shop1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215302",
+              "🔥": "https://vignette.wikia.nocookie.net/slay-the-spire/images/4/46/Rest1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215342",
+              "👹": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Enemy1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215423",
+              "👿": "https://vignette.wikia.nocookie.net/slay-the-spire/images/5/5b/Elite1.jpg/revision/latest/scale-to-width-down/180?cb=20180120215508",
+              "🧳": "https://vignette.wikia.nocookie.net/slay-the-spire/images/9/9e/Chest1.jpg/revision/latest?cb=20180120215546",
+              "🔚": "https://vignette.wikia.nocookie.net/slay-the-spire/images/6/6f/Boss.jpg/revision/latest/scale-to-width-down/180?cb=20180120221339",
+            }
+            const roomTypes = Object.keys(roomImgs);
+
+            const floors = makeLevel({
+              numFloors: 16,
+              floorWidth: 6,
+              maxRooms: 4,
+              minRooms: 2,
+              fixed: {
+                1: "🔥",
+                8: "🧳",
+                15: "👹"
+              }
+            });
+
+            renderFloors(document.querySelector("tbody"), floors);
+
+            function enterRoom (room) {
+              window.alert(`Entering room ${room.sel} ${room.type}`);
+            };
+
+            function makeLevel ({numFloors, floorWidth, maxRooms, minRooms, fixed}) {
+              const floors = [[makeRoom("🔚")]];
+              while (floors.length < numFloors) {
+                const floor = Array(floorWidth).fill(null);
+                let roomsInFloor = Math.ceil(Math.random()*(maxRooms-minRooms))+minRooms;
+                while (roomsInFloor) {
+                  const roomi = Math.floor(Math.random()*floorWidth);
+                  if (floor[roomi]) continue;
+                  floor[roomi] = makeRoom(fixed[floors.length]);
+                  roomsInFloor--;
+                }
+                floors.push(floor);
+              }
+
+              // connect floors
+              floors.slice(1).forEach((floor, floori) => {
+                floor.forEach((room, roomi) => {
+                  if (!room) return;
+                  // find closest up room
+                  const upFloor = floors[floori] // floori is already offset -1
+                  let left = roomi;
+                  let right = roomi;
+                  let closestUpRoom = null;
+                  while (!closestUpRoom) {
+                    closestUpRoom = upFloor[left] || upFloor[right];
+                    left > 0 && left--
+                    right < upFloor.length-1 && right++
+                  }
+                  // attach to closest up room
+                  room.upRooms.push(closestUpRoom);
+                  closestUpRoom.downRooms.push(room);
+
+                });
+              });
+
+              // fix unattached rooms
+              floors.slice(1, -1).forEach((floor, floori) => {
+                floor.forEach((room, roomi) => {
+                  if (!room || room.downRooms.length) return;
+                  // find closest down room
+                  const downFloor = floors[floori+2] // floori is already offset -1
+                  let left = roomi;
+                  let right = roomi;
+                  let closestDownRoom = null;
+                  while (!closestDownRoom) {
+                    closestDownRoom = downFloor[left] || downFloor[right];
+                    left > 0 && left--
+                    right < downFloor.length-1 && right++
+                  }
+                  // attach to closest up room
+                  room.downRooms.push(closestDownRoom);
+                  closestDownRoom.upRooms.push(room);
+                });
+              });
+
+              return floors;
+            }
+            function randomRoomType () {
+              return roomTypes[Math.floor(Math.random()*(roomTypes.length-2))];
+            };
+            function makeRoom (type = randomRoomType()) {
+              return {type, upRooms: [], downRooms: []};
+            };
+
+            function renderFloors(tbodyEl, floors) {
+              floors.map((floor, floorIndex) => {
+                const floorEl = document.createElement("tr");
+                floorEl.classList.add("floor");
+                floor.forEach((room, roomIndex) => {
+                  const el = document.createElement("td");
+                  floorEl.appendChild(el);
+                  if (!room) return;
+                  room.el = el;
+                  room.el.innerHTML = `<img src="${roomImgs[room.type]}" />`;
+                  room.el.classList.add("room");
+                  room.el.addEventListener("click", () => enterRoom(room));
+                  room.sel = `#f${floorIndex}r${roomIndex}`;
+                  room.el.id = `f${floorIndex}r${roomIndex}`;
+                });
+                tbodyEl.appendChild(floorEl);
+              })
+              tbodyEl.querySelector("#f0r0").colSpan = 6; // must come before connectSelectors to get correct centerpoint
+              tbodyEl.querySelector("#f0r0>img").style = "width:180px;height:126px;" // must come before connectSelectors to get correct centerpoint
+              floors.forEach(floor => floor.forEach((room, roomi) => room && room.downRooms.forEach((down, downi) => connectSelectors(1, room.sel, down.sel))));
+            }
+
+            // adapted from https://stackoverflow.com/a/8673281/1862046
+            function connectSelectors(thickness, sel1, sel2) { // draw a line connecting elements
+                var el1 = document.querySelector(sel1);
+                var el2 = document.querySelector(sel2);
+                // get offsets
+                var off1 = getOffset(el1);
+                var off2 = getOffset(el2);
+                // center point of el1
+                var x1 = off1.left + off1.width/2;
+                var y1 = off1.top + off1.height/2;
+                // center point of el2
+                var x2 = off2.left + off2.width/2;
+                var y2 = off2.top + off2.height/2;
+                // connecting line length
+                var length = Math.sqrt(((x2-x1) * (x2-x1)) + ((y2-y1) * (y2-y1)));
+                // connecting line midpoint
+                var cx = ((x1 + x2) / 2) - (length / 2);
+                var cy = ((y1 + y2) / 2) - (thickness / 2);
+                // connecting line angle
+                var angle = Math.atan2((y1-y2),(x1-x2))*(180/Math.PI);
+                // make div.line and position it absolutely
+                var htmlLine = `<div class="line" id="${sel1}->${sel2}" style="height:${thickness}px; left:${cx}px; top:${cy}px; width:${length}px; -moz-transform:rotate(${angle}deg); -webkit-transform:rotate(${angle}deg); -o-transform:rotate(${angle}deg); -ms-transform:rotate(${angle}deg); transform:rotate(${angle}deg);" />`;
+                el1.innerHTML += htmlLine;
+            }
+            function getOffset( el ) {
+              var rect = el.getBoundingClientRect();
+              return {
+                left: rect.left + window.pageXOffset,
+                top: rect.top + window.pageYOffset,
+                width: rect.width || el.offsetWidth,
+                height: rect.height || el.offsetHeight
+              };
+            }
+        </script>
+    </body>
+</html>
